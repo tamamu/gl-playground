@@ -78,32 +78,39 @@ fn main() {
             gl::ClearColor(0.2, 0.3, 0.3, 1.0);
             gl::Clear(gl::COLOR_BUFFER_BIT);
 
+            {
             gl::UseProgram(shaderProgram1);
-
-            let (x1, y1) = calc_rectangle_position(last_frame);
-            let (x2, y2) = calc_rectangle_position(3.14 + last_frame * 0.64);
-            let (x3, y3) = calc_rectangle_position(1.41 + last_frame * 1.28);
-            tri_vertices[0] = x1;
-            tri_vertices[1] = y1;
-            tri_vertices[3] = x2;
-            tri_vertices[4] = y2;
-            tri_vertices[6] = x3;
-            tri_vertices[7] = y3;
-            gl::BindBuffer(gl::ARRAY_BUFFER, VBO1);
-            gl::BufferSubData(gl::ARRAY_BUFFER,
-                              0,
-                              (tri_vertices.len() * mem::size_of::<GLfloat>()) as GLsizeiptr,
-                              &tri_vertices[0] as *const f32 as *const c_void);
-            gl::BindBuffer(gl::ARRAY_BUFFER, 0);
-
-
-            gl::BindVertexArray(VAO1);
-            gl::DrawArrays(gl::TRIANGLES, 0, 3);
-            gl::DrawArrays(gl::POINTS, 0, 3);
-
-            gl::UseProgram(shaderProgram2);
-            gl::BindVertexArray(VAO2);
-            gl::DrawArrays(gl::LINE_LOOP, 0, 4);
+                // update triangle position
+                {
+                    let (x1, y1) = calc_rectangle_position(last_frame);
+                    let (x2, y2) = calc_rectangle_position(3.14 + last_frame * 0.64);
+                    let (x3, y3) = calc_rectangle_position(1.41 + last_frame * 1.28);
+                    tri_vertices[0] = x1;
+                    tri_vertices[1] = y1;
+                    tri_vertices[3] = x2;
+                    tri_vertices[4] = y2;
+                    tri_vertices[6] = x3;
+                    tri_vertices[7] = y3;
+                    gl::BindBuffer(gl::ARRAY_BUFFER, VBO1);
+                    gl::BufferSubData(gl::ARRAY_BUFFER,
+                                      0,
+                                      (tri_vertices.len() * mem::size_of::<GLfloat>()) as GLsizeiptr,
+                                      &tri_vertices[0] as *const f32 as *const c_void);
+                    gl::BindBuffer(gl::ARRAY_BUFFER, 0);
+                }
+                // render with tri_vertices
+                {
+                    gl::BindVertexArray(VAO1);
+                    gl::DrawArrays(gl::TRIANGLES, 0, 3);
+                    gl::DrawArrays(gl::POINTS, 0, 3);
+                }
+            }
+            // render with rect_vertices
+            {
+                gl::UseProgram(shaderProgram2);
+                gl::BindVertexArray(VAO2);
+                gl::DrawArrays(gl::LINE_LOOP, 0, 4);
+            }
         }
 
         window.swap_buffers();
