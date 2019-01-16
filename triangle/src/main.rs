@@ -196,22 +196,6 @@ fn create_program_and_vao(vertices: &[f32], draw_type: GLenum) -> (u32, u32, u32
             gl::DeleteShader(fragmentShader);
         }
 
-        // setup vertex
-        /*
-        let mut tri_vertices: Vertices1 = [
-            -0.5, -0.5, 0.0,
-             0.5, -0.5, 0.0,
-             0.0,  0.5, 0.0
-        ];
-        */
-        /*
-        let mut rect_vertices: Vertices2 = [
-            -0.5, -0.5, 0.0,
-             0.5, -0.5, 0.0,
-             0.5,  0.5, 0.0,
-            -0.5,  0.5, 0.0
-        ];
-        */
         let (mut VBO, mut VAO) = (0, 0);
         gl::GenVertexArrays(1, &mut VAO);
         gl::GenBuffers(1, &mut VBO);
@@ -219,11 +203,14 @@ fn create_program_and_vao(vertices: &[f32], draw_type: GLenum) -> (u32, u32, u32
         // bind VAO first, then bind and set vertex buffer, and then configure vertex attribute
         gl::BindVertexArray(VAO);
 
-        gl::BindBuffer(gl::ARRAY_BUFFER, VBO);
-        gl::BufferData(gl::ARRAY_BUFFER,
-                       (vertices.len() * mem::size_of::<GLfloat>()) as GLsizeiptr,
-                       vertices.as_ptr() as *const c_void,
-                       draw_type);
+        // send data to GPU
+        {
+            gl::BindBuffer(gl::ARRAY_BUFFER, VBO);
+            gl::BufferData(gl::ARRAY_BUFFER,
+                           (vertices.len() * mem::size_of::<GLfloat>()) as GLsizeiptr,
+                           vertices.as_ptr() as *const c_void,
+                           draw_type);
+        }
 
         // set location 0 of vertex shader to 3 floats
         gl::VertexAttribPointer(0, 3, gl::FLOAT, gl::FALSE, 3 * mem::size_of::<GLfloat>() as GLsizei, ptr::null());
