@@ -149,44 +149,52 @@ fn process_events(window: &mut glfw::Window, events: &Receiver<(f64, glfw::Windo
 fn create_program_and_vao(vertices: &[f32], draw_type: GLenum) -> (u32, u32, u32) {
     unsafe {
         let vertexShader = gl::CreateShader(gl::VERTEX_SHADER);
+        let fragmentShader = gl::CreateShader(gl::FRAGMENT_SHADER);
         let c_str_vert = CString::new(vertexShaderSource.as_bytes()).unwrap();
-        gl::ShaderSource(vertexShader, 1, &c_str_vert.as_ptr(), ptr::null());
-        gl::CompileShader(vertexShader);
-
-        // check compile errors
+        let c_str_frag = CString::new(fragmentShaderSource.as_bytes()).unwrap();
         let mut success = gl::FALSE as GLint;
         let mut infoLog = Vec::with_capacity(512);
-        infoLog.set_len(512 - 1); // skip null character
-        gl::GetShaderiv(vertexShader, gl::COMPILE_STATUS, &mut success);
-        if success != gl::TRUE as GLint {
-            gl::GetShaderInfoLog(vertexShader, 512, ptr::null_mut(), infoLog.as_mut_ptr() as *mut GLchar);
-            println!("ERROR::SHADER::VERTEX::COMPILATION_FAILED\n{}", str::from_utf8(&infoLog).unwrap());
+        let shaderProgram = gl::CreateProgram();
+
+        // compile vertex shader
+        {
+            gl::ShaderSource(vertexShader, 1, &c_str_vert.as_ptr(), ptr::null());
+            gl::CompileShader(vertexShader);
+            // check compile errors
+            infoLog.set_len(512 - 1); // skip null character
+            gl::GetShaderiv(vertexShader, gl::COMPILE_STATUS, &mut success);
+            if success != gl::TRUE as GLint {
+                gl::GetShaderInfoLog(vertexShader, 512, ptr::null_mut(), infoLog.as_mut_ptr() as *mut GLchar);
+                println!("ERROR::SHADER::VERTEX::COMPILATION_FAILED\n{}", str::from_utf8(&infoLog).unwrap());
+            }
         }
 
-        let fragmentShader = gl::CreateShader(gl::FRAGMENT_SHADER);
-        let c_str_frag = CString::new(fragmentShaderSource.as_bytes()).unwrap();
-        gl::ShaderSource(fragmentShader, 1, &c_str_frag.as_ptr(), ptr::null());
-        gl::CompileShader(fragmentShader);
-
-        // check compile errors
-        gl::GetShaderiv(fragmentShader, gl::COMPILE_STATUS, &mut success);
-        if success != gl::TRUE as GLint {
-            gl::GetShaderInfoLog(fragmentShader, 512, ptr::null_mut(), infoLog.as_mut_ptr() as *mut GLchar);
-            println!("ERROR::SHADER::FRAGMENT::COMPILATION_FAILED\n{}", str::from_utf8(&infoLog).unwrap());
+        // compile fragment shader
+        {
+            gl::ShaderSource(fragmentShader, 1, &c_str_frag.as_ptr(), ptr::null());
+            gl::CompileShader(fragmentShader);
+            // check compile errors
+            gl::GetShaderiv(fragmentShader, gl::COMPILE_STATUS, &mut success);
+            if success != gl::TRUE as GLint {
+                gl::GetShaderInfoLog(fragmentShader, 512, ptr::null_mut(), infoLog.as_mut_ptr() as *mut GLchar);
+                println!("ERROR::SHADER::FRAGMENT::COMPILATION_FAILED\n{}", str::from_utf8(&infoLog).unwrap());
+            }
         }
 
         // link shader
-        let shaderProgram = gl::CreateProgram();
-        gl::AttachShader(shaderProgram, vertexShader);
-        gl::AttachShader(shaderProgram, fragmentShader);
-        gl::LinkProgram(shaderProgram);
-        gl::GetProgramiv(shaderProgram, gl::LINK_STATUS, &mut success);
-        if success != gl::TRUE as GLint {
-            gl::GetProgramInfoLog(shaderProgram, 512, ptr::null_mut(), infoLog.as_mut_ptr() as *mut GLchar);
-            println!("ERROR::SHADER::PROGRAM::COMPILATION_FAILED\n{}", str::from_utf8(&infoLog).unwrap());
+        {
+            gl::AttachShader(shaderProgram, vertexShader);
+            gl::AttachShader(shaderProgram, fragmentShader);
+            gl::LinkProgram(shaderProgram);
+            // check link errors
+            gl::GetProgramiv(shaderProgram, gl::LINK_STATUS, &mut success);
+            if success != gl::TRUE as GLint {
+                gl::GetProgramInfoLog(shaderProgram, 512, ptr::null_mut(), infoLog.as_mut_ptr() as *mut GLchar);
+                println!("ERROR::SHADER::PROGRAM::COMPILATION_FAILED\n{}", str::from_utf8(&infoLog).unwrap());
+            }
+            gl::DeleteShader(vertexShader);
+            gl::DeleteShader(fragmentShader);
         }
-        gl::DeleteShader(vertexShader);
-        gl::DeleteShader(fragmentShader);
 
         // setup vertex
         /*
