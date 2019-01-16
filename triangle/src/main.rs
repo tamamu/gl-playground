@@ -202,19 +202,21 @@ fn create_program_and_vao(vertices: &[f32], draw_type: GLenum) -> (u32, u32, u32
 
         // bind VAO first, then bind and set vertex buffer, and then configure vertex attribute
         gl::BindVertexArray(VAO);
-
-        // send data to GPU
+        // link VBO to variable of vertex shader at location 0
         {
-            gl::BindBuffer(gl::ARRAY_BUFFER, VBO);
-            gl::BufferData(gl::ARRAY_BUFFER,
-                           (vertices.len() * mem::size_of::<GLfloat>()) as GLsizeiptr,
-                           vertices.as_ptr() as *const c_void,
-                           draw_type);
-        }
+            // send data to GPU
+            {
+                gl::BindBuffer(gl::ARRAY_BUFFER, VBO);
+                gl::BufferData(gl::ARRAY_BUFFER,
+                               (vertices.len() * mem::size_of::<GLfloat>()) as GLsizeiptr,
+                               vertices.as_ptr() as *const c_void,
+                               draw_type);
+            }
 
-        // set location 0 of vertex shader to 3 floats
-        gl::VertexAttribPointer(0, 3, gl::FLOAT, gl::FALSE, 3 * mem::size_of::<GLfloat>() as GLsizei, ptr::null());
-        gl::EnableVertexAttribArray(0);
+            // set location 0 of vertex shader to 3 floats
+            gl::VertexAttribPointer(0, 3, gl::FLOAT, gl::FALSE, 3 * mem::size_of::<GLfloat>() as GLsizei, ptr::null());
+            gl::EnableVertexAttribArray(0);
+        }
 
         gl::BindBuffer(gl::ARRAY_BUFFER, 0);
 
