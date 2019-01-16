@@ -46,7 +46,14 @@ fn main() {
 
     let (shaderProgram, VAO) = create_program_and_vao();
 
+    let mut delta_time: f32;
+    let mut last_frame: f32 = 0.0;
+
     while !window.should_close() {
+        let current_frame = glfw.get_time() as f32;
+        delta_time = current_frame - last_frame;
+        last_frame = current_frame;
+
         process_events(&mut window, &events);
 
         unsafe {
