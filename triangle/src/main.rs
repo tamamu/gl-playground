@@ -234,7 +234,8 @@ fn create_program_and_vao(vertices: &[f32], draw_type: GLenum) -> (u32, u32, u32
             gl::GetShaderiv(vertexShader, gl::COMPILE_STATUS, &mut success);
             if success != gl::TRUE as GLint {
                 gl::GetShaderInfoLog(vertexShader, 512, ptr::null_mut(), infoLog.as_mut_ptr() as *mut GLchar);
-                println!("ERROR::SHADER::VERTEX::COMPILATION_FAILED\n{}", str::from_utf8(&infoLog).unwrap());
+                panic!("ERROR::SHADER::VERTEX::COMPILATION_FAILED\n{}",
+                       str::from_utf8(&infoLog).ok().expect("ShaderInfoLog not valid utf8"));
             }
         }
 
@@ -246,7 +247,8 @@ fn create_program_and_vao(vertices: &[f32], draw_type: GLenum) -> (u32, u32, u32
             gl::GetShaderiv(fragmentShader, gl::COMPILE_STATUS, &mut success);
             if success != gl::TRUE as GLint {
                 gl::GetShaderInfoLog(fragmentShader, 512, ptr::null_mut(), infoLog.as_mut_ptr() as *mut GLchar);
-                println!("ERROR::SHADER::FRAGMENT::COMPILATION_FAILED\n{}", str::from_utf8(&infoLog).unwrap());
+                panic!("ERROR::SHADER::FRAGMENT::COMPILATION_FAILED\n{}",
+                       str::from_utf8(&infoLog).ok().expect("ShaderInfoLog not valid utf8"));
             }
         }
 
@@ -259,7 +261,8 @@ fn create_program_and_vao(vertices: &[f32], draw_type: GLenum) -> (u32, u32, u32
             gl::GetProgramiv(shaderProgram, gl::LINK_STATUS, &mut success);
             if success != gl::TRUE as GLint {
                 gl::GetProgramInfoLog(shaderProgram, 512, ptr::null_mut(), infoLog.as_mut_ptr() as *mut GLchar);
-                println!("ERROR::SHADER::PROGRAM::COMPILATION_FAILED\n{}", str::from_utf8(&infoLog).unwrap());
+                panic!("ERROR::SHADER::PROGRAM::LINKING_FAILED\n{}",
+                       str::from_utf8(&infoLog).ok().expect("ShaderInfoLog not valid utf8"));
             }
             gl::DeleteShader(vertexShader);
             gl::DeleteShader(fragmentShader);
