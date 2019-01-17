@@ -29,6 +29,64 @@ const fragmentShaderSource: &str = r#"
     }
 "#;
 
+const vertexShaderSource2: &str = r#"
+    #version 330 core
+    layout (location = 0) in vec3 aPos;
+    out vec2 vPos;
+    void main() {
+        vPos = aPos.xy;
+        gl_PointSize = 10.0;
+        gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);
+    }
+"#;
+
+const fragmentShaderSource2: &str = r#"
+    #version 330 core
+    in vec2 vPos;
+    out vec4 FragColor;
+    uniform float t;
+    void calc_rectangle_position(in float t, out vec2 v) {
+        float u = mod(t, 4.0);
+        if (u > 3.0) {
+            v = vec2(-0.5, 0.5 - (u - 3.0));
+        } else if (u > 2.0) {
+            v = vec2(0.5 - (u - 2.0), 0.5);
+        } else if (u > 1.0) {
+            v = vec2(0.5, -0.5 + (u - 1.0));
+        } else {
+            v = vec2(-0.5 + u, -0.5);
+        }
+    }
+    void main() {
+        vec2 p = vPos;
+        vec2 a; calc_rectangle_position(t, a);
+        vec2 b; calc_rectangle_position(3.14 + (t * 0.64), b);
+        vec2 c; calc_rectangle_position(1.41 + (t * 1.28), c);
+        vec2 ab = b - a;
+        vec2 bp = p - b;
+        vec2 bc = c - b;
+        vec2 cp = p - c;
+        vec2 ca = a - c;
+        vec2 ap = p - a;
+        float c1 = ab.x * bp.y - ab.y * bp.x;
+        float c2 = bc.x * cp.y - bc.y * cp.x;
+        float c3 = ca.x * ap.y - ca.y * ap.x;
+        vec2 n = (vPos + 1.0) / 2.0;
+        if (distance(p, a) < 0.015 || distance(p, b) < 0.015 || distance(p, c) < 0.015) {
+            FragColor = vec4(1.0f, 0.5f, 0.2f, 1.0f);
+        } else if (abs(abs(p.x)-0.495) < 0.001 || abs(abs(p.y)-0.495) < 0.001) {
+            FragColor = vec4(1.0f, 0.5f, 0.2f, 1.0f);
+        } else {
+            if ((c1 > 0 && c2 > 0 && c3 > 0) || (c1 < 0 && c2 < 0 && c3 < 0)) {
+                FragColor = vec4(1.0f, 0.5f, 0.2f, 1.0f);
+            } else {
+                FragColor = vec4(0.2f, 0.3f, 0.3f, 1.0f);
+            }
+        }
+    }
+"#;
+
+
 type Vertices1 = [f32; 9];
 type Vertices2 = [f32;12];
 
@@ -63,9 +121,13 @@ fn main() {
          0.5,  0.5, 0.0,
         -0.5,  0.5, 0.0
     ];
+    let fill_indices = [
+        0, 1, 3, 2
+    ];
 
-    let (shaderProgram1, VAO1, VBO1) = create_program_and_vao(&tri_vertices, gl::DYNAMIC_DRAW);
-    let (shaderProgram2, VAO2, VBO2) = create_program_and_vao(&rect_vertices, gl::STATIC_DRAW);
+    //let (shaderProgram1, VAO1, VBO1) = create_program_and_vao(&tri_vertices, gl::DYNAMIC_DRAW);
+    //let (shaderProgram2, VAO2, VBO2) = create_program_and_vao(&rect_vertices, gl::STATIC_DRAW);
+    let (shaderProgram1, VAO1, VBO1) = create_program_and_vao_with_indices(vertexShaderSource2, fragmentShaderSource2, &rect_vertices, &fill_indices, gl::STATIC_DRAW);
 
     while !window.should_close() {
         let current_frame = glfw.get_time() as f32;
@@ -81,7 +143,7 @@ fn main() {
             {
             gl::UseProgram(shaderProgram1);
                 // update triangle position
-                {
+                {/*
                     let (x1, y1) = calc_rectangle_position(last_frame);
                     let (x2, y2) = calc_rectangle_position(3.14 + last_frame * 0.64);
                     let (x3, y3) = calc_rectangle_position(1.41 + last_frame * 1.28);
@@ -97,20 +159,27 @@ fn main() {
                                       (tri_vertices.len() * mem::size_of::<GLfloat>()) as GLsizeiptr,
                                       &tri_vertices[0] as *const f32 as *const c_void);
                     gl::BindBuffer(gl::ARRAY_BUFFER, 0);
+                */}
+                // send t as current time
+                {
+                    let t = CString::new("t").unwrap();
+                    let t_location = gl::GetUniformLocation(shaderProgram1, t.as_ptr());
+                    gl::Uniform1f(t_location, last_frame % 10000.0);
                 }
                 // render with tri_vertices
                 {
                     gl::BindVertexArray(VAO1);
-                    gl::DrawArrays(gl::TRIANGLES, 0, 3);
-                    gl::DrawArrays(gl::POINTS, 0, 3);
+                    gl::DrawArrays(gl::TRIANGLE_FAN, 0, 4);
+                    //gl::DrawArrays(gl::TRIANGLES, 0, 3);
+                    //gl::DrawArrays(gl::POINTS, 0, 3);
                 }
             }
             // render with rect_vertices
-            {
+            {/*
                 gl::UseProgram(shaderProgram2);
                 gl::BindVertexArray(VAO2);
                 gl::DrawArrays(gl::LINE_LOOP, 0, 4);
-            }
+            */}
         }
 
         window.swap_buffers();
@@ -210,6 +279,100 @@ fn create_program_and_vao(vertices: &[f32], draw_type: GLenum) -> (u32, u32, u32
                 gl::BufferData(gl::ARRAY_BUFFER,
                                (vertices.len() * mem::size_of::<GLfloat>()) as GLsizeiptr,
                                vertices.as_ptr() as *const c_void,
+                               draw_type);
+            }
+
+            // set location 0 of vertex shader to 3 floats
+            gl::VertexAttribPointer(0, 3, gl::FLOAT, gl::FALSE, 3 * mem::size_of::<GLfloat>() as GLsizei, ptr::null());
+            gl::EnableVertexAttribArray(0);
+        }
+
+        gl::BindBuffer(gl::ARRAY_BUFFER, 0);
+
+        gl::BindVertexArray(0);
+
+        (shaderProgram, VAO, VBO)
+    }
+}
+
+fn create_program_and_vao_with_indices(
+    vertex_shader: &str,
+    fragment_shader: &str,
+    vertices: &[f32],
+    indices: &[u32],
+    draw_type: GLenum
+    ) -> (u32, u32, u32) {
+    unsafe {
+        let vertexShader = gl::CreateShader(gl::VERTEX_SHADER);
+        let fragmentShader = gl::CreateShader(gl::FRAGMENT_SHADER);
+        let c_str_vert = CString::new(vertex_shader.as_bytes()).unwrap();
+        let c_str_frag = CString::new(fragment_shader.as_bytes()).unwrap();
+        let mut success = gl::FALSE as GLint;
+        let mut infoLog = Vec::with_capacity(512);
+        let shaderProgram = gl::CreateProgram();
+
+        // compile vertex shader
+        {
+            gl::ShaderSource(vertexShader, 1, &c_str_vert.as_ptr(), ptr::null());
+            gl::CompileShader(vertexShader);
+            // check compile errors
+            infoLog.set_len(512 - 1); // skip null character
+            gl::GetShaderiv(vertexShader, gl::COMPILE_STATUS, &mut success);
+            if success != gl::TRUE as GLint {
+                gl::GetShaderInfoLog(vertexShader, 512, ptr::null_mut(), infoLog.as_mut_ptr() as *mut GLchar);
+                println!("ERROR::SHADER::VERTEX::COMPILATION_FAILED\n{}", str::from_utf8(&infoLog).unwrap());
+            }
+        }
+
+        // compile fragment shader
+        {
+            gl::ShaderSource(fragmentShader, 1, &c_str_frag.as_ptr(), ptr::null());
+            gl::CompileShader(fragmentShader);
+            // check compile errors
+            gl::GetShaderiv(fragmentShader, gl::COMPILE_STATUS, &mut success);
+            if success != gl::TRUE as GLint {
+                gl::GetShaderInfoLog(fragmentShader, 512, ptr::null_mut(), infoLog.as_mut_ptr() as *mut GLchar);
+                println!("ERROR::SHADER::FRAGMENT::COMPILATION_FAILED\n{}", str::from_utf8(&infoLog).unwrap());
+            }
+        }
+
+        // link shader
+        {
+            gl::AttachShader(shaderProgram, vertexShader);
+            gl::AttachShader(shaderProgram, fragmentShader);
+            gl::LinkProgram(shaderProgram);
+            // check link errors
+            gl::GetProgramiv(shaderProgram, gl::LINK_STATUS, &mut success);
+            if success != gl::TRUE as GLint {
+                gl::GetProgramInfoLog(shaderProgram, 512, ptr::null_mut(), infoLog.as_mut_ptr() as *mut GLchar);
+                println!("ERROR::SHADER::PROGRAM::COMPILATION_FAILED\n{}", str::from_utf8(&infoLog).unwrap());
+            }
+            gl::DeleteShader(vertexShader);
+            gl::DeleteShader(fragmentShader);
+        }
+
+        let (mut VBO, mut VAO, mut EBO) = (0, 0, 0);
+        gl::GenVertexArrays(1, &mut VAO);
+        gl::GenBuffers(1, &mut VBO);
+        gl::GenBuffers(1, &mut EBO);
+
+        // bind VAO first, then bind and set vertex buffer, and then configure vertex attribute
+        gl::BindVertexArray(VAO);
+        // link VBO to variable of vertex shader at location 0
+        {
+            // send data to GPU
+            {
+                gl::BindBuffer(gl::ARRAY_BUFFER, VBO);
+                gl::BufferData(gl::ARRAY_BUFFER,
+                               (vertices.len() * mem::size_of::<GLfloat>()) as GLsizeiptr,
+                               vertices.as_ptr() as *const c_void,
+                               draw_type);
+            }
+            {
+                gl::BindBuffer(gl::ELEMENT_ARRAY_BUFFER, EBO);
+                gl::BufferData(gl::ELEMENT_ARRAY_BUFFER,
+                               (indices.len() * mem::size_of::<GLfloat>()) as GLsizeiptr,
+                               indices.as_ptr() as *const c_void,
                                draw_type);
             }
 
