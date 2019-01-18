@@ -45,6 +45,8 @@ const fragmentShaderSource2: &str = r#"
     in vec2 vPos;
     out vec4 FragColor;
     uniform float t;
+    uniform int showPoint;
+    uniform int showLine;
     void calc_rectangle_position(in float t, out vec2 v) {
         float u = mod(t, 4.0);
         if (u > 3.0) {
@@ -56,6 +58,9 @@ const fragmentShaderSource2: &str = r#"
         } else {
             v = vec2(-0.5 + u, -0.5);
         }
+    }
+    float calc_opacity(float t) {
+        return t * t;
     }
     void main() {
         vec2 p = vPos;
@@ -72,20 +77,23 @@ const fragmentShaderSource2: &str = r#"
         float c2 = bc.x * cp.y - bc.y * cp.x;
         float c3 = ca.x * ap.y - ca.y * ap.x;
         vec2 n = (vPos + 1.0) / 2.0;
-        if (distance(p, a) < 0.015 || distance(p, b) < 0.015 || distance(p, c) < 0.015) {
+        if (showPoint == 1 && (distance(p, a) < 0.015 || distance(p, b) < 0.015 || distance(p, c) < 0.015)) {
             FragColor = vec4(1.0f, 0.5f, 0.2f, 1.0f);
-        } else if (abs(abs(p.x)-0.495) < 0.001 || abs(abs(p.y)-0.495) < 0.001) {
+        } else if (showLine == 1 && (abs(p.x)-0.499 > 0 || abs(p.y)-0.499 > 0)) {
             FragColor = vec4(1.0f, 0.5f, 0.2f, 1.0f);
         } else {
             if ((c1 > 0 && c2 > 0 && c3 > 0) || (c1 < 0 && c2 < 0 && c3 < 0)) {
-                FragColor = vec4(1.0f, 0.5f, 0.2f, 1.0f);
+                FragColor = vec4(1.0f, 0.5f, 0.2f, calc_opacity(mod(t, 2.0)-1.0));
             } else {
-                FragColor = vec4(0.2f, 0.3f, 0.3f, 1.0f);
+                FragColor = vec4(1.0f, 1.0f, 1.0f, 0.0f);
             }
         }
     }
 "#;
 
+static mut show_point: bool = true;
+static mut show_line: bool = true;
+static mut program_number: u32 = 0;
 
 type Vertices1 = [f32; 9];
 type Vertices2 = [f32;12];
@@ -105,7 +113,13 @@ fn main() {
     window.set_framebuffer_size_polling(true);
 
     gl::load_with(|symbol| window.get_proc_address(symbol) as *const _);
-    unsafe { gl::Enable(gl::PROGRAM_POINT_SIZE); }
+    unsafe {
+        gl::Enable(gl::PROGRAM_POINT_SIZE);
+        //gl::Enable(gl::DEPTH_TEST);
+        gl::Enable(gl::BLEND);
+        gl::BlendFunc(gl::SRC_ALPHA, gl::ONE_MINUS_SRC_ALPHA);
+        gl::LineWidth(8.0);
+    }
 
     let mut delta_time: f32;
     let mut last_frame: f32 = 0.0;
@@ -125,9 +139,9 @@ fn main() {
         0, 1, 3, 2
     ];
 
-    //let (shaderProgram1, VAO1, VBO1) = create_program_and_vao(&tri_vertices, gl::DYNAMIC_DRAW);
-    //let (shaderProgram2, VAO2, VBO2) = create_program_and_vao(&rect_vertices, gl::STATIC_DRAW);
-    let (shaderProgram1, VAO1, VBO1) = create_program_and_vao_with_indices(vertexShaderSource2, fragmentShaderSource2, &rect_vertices, &fill_indices, gl::STATIC_DRAW);
+    let (shaderProgram1, VAO1, VBO1) = create_program_and_vao(&tri_vertices, gl::DYNAMIC_DRAW);
+    let (shaderProgram2, VAO2, VBO2) = create_program_and_vao(&rect_vertices, gl::STATIC_DRAW);
+    let (shaderProgram3, VAO3, VBO3) = create_program_and_vao_with_indices(vertexShaderSource2, fragmentShaderSource2, &rect_vertices, &fill_indices, gl::STATIC_DRAW);
 
     while !window.should_close() {
         let current_frame = glfw.get_time() as f32;
@@ -140,46 +154,62 @@ fn main() {
             gl::ClearColor(0.2, 0.3, 0.3, 1.0);
             gl::Clear(gl::COLOR_BUFFER_BIT);
 
-            {
-            gl::UseProgram(shaderProgram1);
-                // update triangle position
-                {/*
-                    let (x1, y1) = calc_rectangle_position(last_frame);
-                    let (x2, y2) = calc_rectangle_position(3.14 + last_frame * 0.64);
-                    let (x3, y3) = calc_rectangle_position(1.41 + last_frame * 1.28);
-                    tri_vertices[0] = x1;
-                    tri_vertices[1] = y1;
-                    tri_vertices[3] = x2;
-                    tri_vertices[4] = y2;
-                    tri_vertices[6] = x3;
-                    tri_vertices[7] = y3;
-                    gl::BindBuffer(gl::ARRAY_BUFFER, VBO1);
-                    gl::BufferSubData(gl::ARRAY_BUFFER,
-                                      0,
-                                      (tri_vertices.len() * mem::size_of::<GLfloat>()) as GLsizeiptr,
-                                      &tri_vertices[0] as *const f32 as *const c_void);
-                    gl::BindBuffer(gl::ARRAY_BUFFER, 0);
-                */}
-                // send t as current time
-                {
-                    let t = CString::new("t").unwrap();
-                    let t_location = gl::GetUniformLocation(shaderProgram1, t.as_ptr());
-                    gl::Uniform1f(t_location, last_frame % 10000.0);
+            match program_number {
+                0 => {
+                    gl::UseProgram(shaderProgram1);
+                    // update triangle position
+                    {
+                        let (x1, y1) = calc_rectangle_position(last_frame);
+                        let (x2, y2) = calc_rectangle_position(3.14 + last_frame * 0.64);
+                        let (x3, y3) = calc_rectangle_position(1.41 + last_frame * 1.28);
+                        tri_vertices[0] = x1;
+                        tri_vertices[1] = y1;
+                        tri_vertices[3] = x2;
+                        tri_vertices[4] = y2;
+                        tri_vertices[6] = x3;
+                        tri_vertices[7] = y3;
+                        gl::BindBuffer(gl::ARRAY_BUFFER, VBO1);
+                        gl::BufferSubData(gl::ARRAY_BUFFER,
+                                          0,
+                                          (tri_vertices.len() * mem::size_of::<GLfloat>()) as GLsizeiptr,
+                                          &tri_vertices[0] as *const f32 as *const c_void);
+                        gl::BindBuffer(gl::ARRAY_BUFFER, 0);
+                    }
+                    // render a triangle and points
+                    {
+                        gl::BindVertexArray(VAO1);
+                        gl::DrawArrays(gl::TRIANGLES, 0, 3);
+                        if show_point { gl::DrawArrays(gl::POINTS, 0, 3); }
+                    }
+                    // render lines
+                    if show_line {
+                        gl::UseProgram(shaderProgram2);
+                        gl::BindVertexArray(VAO2);
+                        gl::DrawArrays(gl::LINE_LOOP, 0, 4);
+                    }
                 }
-                // render with tri_vertices
-                {
-                    gl::BindVertexArray(VAO1);
-                    gl::DrawArrays(gl::TRIANGLE_FAN, 0, 4);
-                    //gl::DrawArrays(gl::TRIANGLES, 0, 3);
-                    //gl::DrawArrays(gl::POINTS, 0, 3);
+                1 => {
+                    gl::UseProgram(shaderProgram3);
+                    // send t as current time
+                    {
+                        let t = CString::new("t").unwrap();
+                        let t_location = gl::GetUniformLocation(shaderProgram3, t.as_ptr());
+                        gl::Uniform1f(t_location, last_frame % 10000.0);
+                        let showPoint = CString::new("showPoint").unwrap();
+                        let showPoint_location = gl::GetUniformLocation(shaderProgram3, showPoint.as_ptr());
+                        gl::Uniform1i(showPoint_location, if show_point {1} else {0});
+                        let showLine = CString::new("showLine").unwrap();
+                        let showLine_location = gl::GetUniformLocation(shaderProgram3, showLine.as_ptr());
+                        gl::Uniform1i(showLine_location, if show_line {1} else {0});
+                    }
+                    // render with tri_vertices
+                    {
+                        gl::BindVertexArray(VAO3);
+                        gl::DrawArrays(gl::TRIANGLE_FAN, 0, 4);
+                    }
                 }
+                _ => {}
             }
-            // render with rect_vertices
-            {/*
-                gl::UseProgram(shaderProgram2);
-                gl::BindVertexArray(VAO2);
-                gl::DrawArrays(gl::LINE_LOOP, 0, 4);
-            */}
         }
 
         window.swap_buffers();
@@ -209,6 +239,20 @@ fn process_events(window: &mut glfw::Window, events: &Receiver<(f64, glfw::Windo
                 unsafe { gl::Viewport(0, 0, width, height) }
             }
             glfw::WindowEvent::Key(Key::Escape, _, Action::Press, _) => window.set_should_close(true),
+            glfw::WindowEvent::Key(Key::Enter, _, Action::Press, _) => {
+                unsafe {
+                    program_number += 1;
+                    if program_number > 1 {
+                        program_number = 0;
+                    }
+                }
+            }
+            glfw::WindowEvent::Key(Key::Space, _, Action::Press, _) => {
+                unsafe { show_point = !show_point; }
+            }
+            glfw::WindowEvent::Key(Key::LeftShift, _, Action::Press, _) => {
+                unsafe { show_line = !show_line; }
+            }
             _ => {}
         }
     }
