@@ -11,6 +11,7 @@ use std::ptr;
 use std::str;
 use std::mem;
 use std::os::raw::c_void;
+use std::collections::HashMap;
 
 const vertexShaderSource: &str = r#"
     #version 330 core
@@ -97,6 +98,41 @@ static mut program_number: u32 = 0;
 
 type Vertices1 = [f32; 9];
 type Vertices2 = [f32;12];
+
+enum GLType {
+    Int,
+    Float,
+    Uint,
+}
+
+struct GLVariable {
+    data_type: GLType,
+    size: GLsizeiptr,
+}
+
+struct BufferPosition {
+    offset: GLsizeiptr,
+    size: GLsizeiptr,
+}
+
+struct VertexBufferObject<T> {
+    id: GLuint,
+    data_type: GLType,
+    data: Box<[T]>,
+    usage: GLenum,
+    positions: Vec<BufferPosition>,
+}
+
+struct VertexArrayObject {
+    id: GLuint,
+    vbos: Vec<VertexBufferObject<f32>>,
+    ebos: Vec<VertexBufferObject<u32>>,
+}
+
+struct Shader {
+    program: GLuint,
+    uniforms: HashMap<String, GLVariable>,
+}
 
 fn main() {
     let mut glfw = glfw::init(glfw::FAIL_ON_ERRORS).unwrap();
