@@ -205,7 +205,7 @@ fn main() {
                     // render with tri_vertices
                     {
                         gl::BindVertexArray(VAO3);
-                        gl::DrawArrays(gl::TRIANGLE_FAN, 0, 4);
+                        gl::DrawElements(gl::TRIANGLE_STRIP, 4, gl::UNSIGNED_INT, ptr::null());
                     }
                 }
                 _ => {}
