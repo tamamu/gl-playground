@@ -100,7 +100,14 @@ const fragmentShaderSource2: &str = r#"
         } else {
             if ((c1 > 0 && c2 > 0 && c3 > 0) || (c1 < 0 && c2 < 0 && c3 < 0)) {
                 //FragColor = vec4(1.0f, 0.5f, 0.2f, calc_opacity(mod(t, 2.0)-1.0));
-                FragColor = texture(tex, TexCoord);
+                const float shakeLength = 0.1;
+                const float shakeWidth = 0.01;
+                const float speed = 1.0;
+
+                float offsetX = sin(gl_FragCoord.x * shakeLength + t * speed) * shakeWidth;
+                float offsetY = cos(gl_FragCoord.y * shakeLength + t * speed) * shakeWidth;
+                vec4 color = texture(tex, vec2(TexCoord.x + offsetX , TexCoord.y + offsetY));
+                FragColor = color;
             } else {
                 FragColor = vec4(1.0f, 1.0f, 1.0f, 0.0f);
             }
@@ -252,9 +259,9 @@ fn main() {
     ];
     let tex_coords: Vec2f4 = [
         1.0, 1.0,
-        1.0, 0.0,
-        0.0, 0.0,
         0.0, 1.0,
+        0.0, 0.0,
+        1.0, 0.0,
     ];
     let fill_indices = [
         0, 1, 3, 2
