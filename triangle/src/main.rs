@@ -309,8 +309,8 @@ fn main() {
         gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_S, gl::REPEAT as i32); // set texture wrapping to gl::REPEAT (default wrapping method)
         gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_T, gl::REPEAT as i32);
         // set texture filtering parameters
-        gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::LINEAR as i32);
-        gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::LINEAR as i32);
+        gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::LINEAR_MIPMAP_NEAREST as i32);
+        gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::LINEAR_MIPMAP_NEAREST as i32);
 
         let img = image::open(&Path::new("sea.png")).expect("Failed to load texture");
         let data = img.raw_pixels();
@@ -388,6 +388,9 @@ fn main() {
                                fill_indices.as_ptr() as *const c_void,
                                gl::STATIC_DRAW);
             }
+            //gl::BindVertexArray(0);
+            //gl::BindBuffer(gl::ELEMENT_ARRAY_BUFFER, 0);
+            //gl::BindVertexArray(VAO3);
 
             // set location 0 of vertex shader to 3 floats
             gl::VertexAttribPointer(0, 3, gl::FLOAT, gl::FALSE, 3 * mem::size_of::<GLfloat>() as GLsizei, ptr::null());
